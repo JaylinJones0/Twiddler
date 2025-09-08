@@ -29,45 +29,44 @@ $(() => {
   $page.append($tweetsDiv);
 
   // Keeps track of how many tweets have been shown
-  let lastRenderedIndex = streams.home.length;
+  let lastRenderedIndex = 0;
 
   // Render tweet array to page
-  function renderTweets(tweetsArray) {
-    $tweetsDiv.empty();
+  function renderTweetElement(tweet) {
+    const $tweet = $('<div class="tweet"></div>');
 
-    const $tweets = tweetsArray.slice().reverse().map((tweet) => {
-      const $tweet = $('<div class="tweet"></div>');
+    const $username = $('<span class="username"></span>').text(`@${tweet.user}`);
+    const $header = $('<div class="header"></div>').append($username).append(`: ${tweet.message}`);
+    $tweet.append($header);
 
-      const $username = $('<span class="username"></span>').text(`@${tweet.user}`);
-      const $header = $('<div class="header"></div>').append($username).append(`: ${tweet.message}`);
-      $tweet.append($header);
+    const $timestamp = $('<div class="timestamp"></div>').text(returnTimestamp(tweet.created_at));
+    $tweet.append($timestamp);
 
-      const $message = $('<div class="message"></div>').text(tweet.message);
-      $tweet.append($message);
+    const $humanFriendlyTimestamp = $('<div class="humanFriendlyTimestamp"></div>').text(
+      returnTimestamp(tweet.created_at, 'humanFriendly')
+    );
+    $tweet.append($humanFriendlyTimestamp);
 
-      const $timestamp = $('<div class="timestamp"></div>').text(returnTimestamp(tweet.created_at));
-      $tweet.append($timestamp);
-
-      const $humanFriendlyTimestamp = $('<div class="humanFriendlyTimestamp"></div>').text(
-        returnTimestamp(tweet.created_at, 'humanFriendly')
-      );
-      $tweet.append($humanFriendlyTimestamp);
-
-      return $tweet;
-    });
-
-    $tweetsDiv.append($tweets);
-    lastRenderedIndex = streams.home.length;
+    return $tweet;
   }
 
   // Initial render
-  renderTweets(streams.home);
+  streams.home.forEach((tweet) => {
+    const $tweetElem = renderTweetElement(tweet);
+    $tweetsDiv.prepend($tweetElem);
+  });
+  lastRenderedIndex = streams.home.length;
 
   // Filter by username
   $(document).on('click', '.username', function () {
     const username = $(this).text().replace('@', '');
-    const userTweets = streams.users[username];
-    renderTweets(userTweets);
+    const userTweets = streams.users[username] || [];
+
+    $tweetsDiv.empty();
+    userTweets.slice().reverse().forEach((tweet) => {
+      const $tweetElem = renderTweetElement(tweet);
+      $tweetsDiv.append($tweetElem);
+    });
   });
 
   // Submit tweet
@@ -96,15 +95,8 @@ $(() => {
     streams.users[username].push(newTweet);
 
     // Render new tweet immediately at the top
-    const $tweet = $('<div class="tweet"></div>');
-    const $userElem = $('<span class="username"></span>').text(`@${newTweet.user}`);
-    const $header = $('<div class="header"></div>').append($userElem).append(`: ${newTweet.message}`);
-    $tweet.append($header);
-    $tweet.append($('<div class="message"></div>').text(newTweet.message));
-    $tweet.append($('<div class="timestamp"></div>').text(returnTimestamp(newTweet.created_at)));
-    $tweet.append($('<div class="humanFriendlyTimestamp"></div>').text(returnTimestamp(newTweet.created_at, 'humanFriendly')));
-
-    $tweetsDiv.prepend($tweet);
+    const $tweetElem = renderTweetElement(newTweet);
+    $tweetsDiv.prepend($tweetElem);
 
     // Update the index to avoid showing it again from "new tweets" button
     lastRenderedIndex = streams.home.length;
@@ -118,7 +110,11 @@ $(() => {
   $('#new-tweets-button').on('click', function () {
     const newTweets = streams.home.slice(lastRenderedIndex);
     if (newTweets.length > 0) {
-      renderTweets(streams.home);
+      newTweets.reverse().forEach((tweet) => {
+        const $tweetElem = renderTweetElement(tweet);
+        $tweetsDiv.prepend($tweetElem);
+      });
+      lastRenderedIndex = streams.home.length;
     }
   });
 });
